@@ -1,80 +1,107 @@
 # InsightFlow
 
-InsightFlow is a modular foundation for building insight-driven products that transform raw data into actionable context. This repository is organized to keep data access, domain logic, and delivery channels cleanly separated so the system can scale and evolve without tightly coupled changes.
+## Problem statement
+Teams need a lightweight, consistent way to ingest transaction data, standardize it, and expose reliable metrics without hard-coupling data access to API delivery. InsightFlow provides a simple transaction-centric service that organizes persistence, business rules, and HTTP delivery so future data sources and analytics can be added without reworking the core system.
 
-## Project goals
+## Architecture diagram (simple)
 
-- **Clarity:** Define a consistent architecture that keeps responsibilities separated.
-- **Scalability:** Support growth in data volume, product features, and delivery channels.
-- **Maintainability:** Make it straightforward to test, refactor, and replace parts of the system.
+```
+           +--------------------+
+           |     API Clients    |
+           +----------+---------+
+                      |
+                      v
++---------------------+---------------------+
+|           FastAPI Application             |
+|  app/main.py                              |
+|  - Routers: health, transactions, metrics |
++---------------------+---------------------+
+                      |
+                      v
++---------------------+---------------------+
+|         Service Layer (app/services)      |
+|  - transaction CRUD                        |
+|  - metrics aggregation                     |
++---------------------+---------------------+
+                      |
+                      v
++---------------------+---------------------+
+|        Data Layer (SQLAlchemy ORM)        |
+|  - models, schemas, session management    |
++---------------------+---------------------+
+                      |
+                      v
++---------------------+---------------------+
+|              PostgreSQL Database          |
++-------------------------------------------+
+```
 
-## Scope
+## Tech stack
+- **FastAPI** for HTTP routing and request/response handling.
+- **SQLAlchemy** ORM for persistence and query composition.
+- **Pydantic** models for input/output validation.
+- **PostgreSQL** as the primary datastore (local via Docker).
+- **Uvicorn** ASGI server for local development.
 
-This project focuses on the technical backbone required to:
+## Current features
+- Health endpoint (`GET /health`) to confirm service availability.
+- Transaction CRUD endpoints (`/transactions`) with pagination and status filtering.
+- CSV ingestion endpoint (`POST /transactions/ingest/csv`) with validation and duplicate reference handling.
+- Metrics endpoints (`/metrics/daily`, `/metrics/summary`) for aggregated transaction insights.
+- Correlation ID logging middleware for request tracing.
 
-- Ingest data from internal and external sources.
-- Normalize and enrich data with domain rules.
-- Expose insights to consumers through APIs, apps, and reports.
-
-Out of scope for this repository (unless explicitly added later):
-
-- Production data sources or proprietary datasets.
-- End-user application UI/UX beyond developer-facing documentation.
-- Infrastructure-specific deployment scripts for a particular cloud provider.
-
-## Architectural layers
-
-InsightFlow follows layered boundaries to reduce coupling:
-
-1. **Data Layer**
-   - Connectors for databases, APIs, and files.
-   - Data validation and schema management.
-
-2. **Domain Layer**
-   - Business rules and core entities.
-   - Use-cases that orchestrate workflows.
-
-3. **Application Layer**
-   - Services that coordinate domain and delivery.
-   - Task scheduling and orchestration.
-
-4. **Delivery Layer**
-   - HTTP APIs, CLI tools, or report generators.
-   - Presentational mappings for consumers.
-
-5. **Observability Layer**
-   - Logging, metrics, and tracing.
-   - Alerting hooks and dashboards.
+## Planned layers (roadmap)
+- **Data connectors** for external ingestion sources (files, third-party APIs).
+- **Domain workflows** for enriched transaction classification and anomaly detection.
+- **Delivery channels** beyond REST (CLI batch jobs, scheduled reports).
+- **Observability** enhancements (structured logs, dashboards, alerts).
+- **CI automation** for linting, type checks, and test execution.
 
 ## Repository structure
-
 ```
 .
-├── README.md
-└── .gitkeep
+├── app
+│   ├── api            # FastAPI routers and dependency injection
+│   ├── models         # SQLAlchemy ORM models
+│   ├── schemas        # Pydantic request/response models
+│   ├── services       # Business logic and data access coordination
+│   ├── utils          # Logging helpers and middleware
+│   └── main.py        # FastAPI application entrypoint
+├── docker
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── tests              # Pytest coverage for API behaviors
+├── requirements.txt
+└── README.md
 ```
 
-> As the project grows, new top-level folders should mirror the architectural layers (for example `data/`, `domain/`, `app/`, `delivery/`, `observability/`).
+## How to run locally
 
-## Development workflow
+### Option A: Docker Compose (recommended)
+1. Build and start the API + database:
+   ```bash
+   docker compose -f docker/docker-compose.yml up --build
+   ```
+2. Open `http://localhost:8000/docs` for the interactive API docs.
 
-1. Clone the repository.
-2. Create a feature branch.
-3. Add or modify modules within the appropriate layer.
-4. Document new APIs or flows in the README or dedicated docs.
+### Option B: Run locally with Python
+1. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. Ensure Postgres is running and export the connection string:
+   ```bash
+   export DATABASE_URL=postgresql+psycopg2://insightflow:insightflow@localhost:5432/insightflow
+   ```
+3. Start the API:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-## Contributing
-
-- Keep layer boundaries intact—avoid cross-layer imports.
-- Prefer dependency injection between layers.
-- Add tests for every significant workflow.
-
-## Roadmap
-
-- Define a canonical directory structure.
-- Add CI checks for linting and testing.
-- Implement starter modules for each layer.
-
-## License
-
-TBD
+## What you learned so far
+- Keeping request validation in Pydantic schemas makes ingestion errors easy to surface early.
+- Separating CRUD and metrics logic into service modules keeps API routes thin and predictable.
+- A small middleware layer (correlation IDs) improves observability without changing route logic.
+- Docker Compose offers the fastest repeatable environment for local API + database development.
