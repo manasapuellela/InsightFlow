@@ -1,3 +1,5 @@
+<img width="607" height="870" alt="image" src="https://github.com/user-attachments/assets/3443855b-b994-4328-b4c3-6dfdc5f8fe2f" />
+
 # InsightFlow
 
 ## Problem statement
